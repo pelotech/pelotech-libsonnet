@@ -1,5 +1,5 @@
 # pelotech-libsonnet
-Pelotech Jsonnet Librraries
+Pelotech Jsonnet Libraries
 
 ```bash
 :pelotech-libsonnet$ jsonnet -y examples/myapp.jsonnet 
