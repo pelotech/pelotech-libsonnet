@@ -86,8 +86,6 @@ local kube = import 'kube.libsonnet';
             service+: {
                 port: 81,
             },
-            appConfig: {},
-            appDirectory: '/usr/src/app',
             volumeMounts+: if this.configmap == null then {} else {
                 config: { 
                     mountPath: '%s/config/production.json' % this.config.appDirectory,
@@ -97,6 +95,9 @@ local kube = import 'kube.libsonnet';
             volumes+: if this.configmap == null then {} else {
                 config: $.ConfigMapVolume(this.configmap)
             },
+
+            appConfig: {},
+            appDirectory: '/usr/src/app',
         },
 
         configmap: if this.config.appConfig != {} then kube.ConfigMap('%s-config' % name) {

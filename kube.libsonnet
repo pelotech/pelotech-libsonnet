@@ -79,7 +79,7 @@
     local len = std.length(s);
     local leading = std.substr(s, 0, len - 1);
     local last = std.parseInt(std.substr(s, len - 1, 1));
-    assert (!$._assert) || last < 8 : "found '%s' digit >= 8" % [last];
+    assert (! $._assert) || last < 8 : "found '%s' digit >= 8" % [last];
     last + (if len > 1 then 8 * $.parseOctal(leading) else 0)
   ),
 
@@ -87,7 +87,7 @@
   mapToNamedList(o):: [{ name: $.hyphenate(n) } + o[n] for n in std.objectFields(o)],
 
   // Return object containing only these fields elements
-  filterMapByFields(o, fields): { [field]: o[field] for field in std.setInter(std.objectFields(o), fields) },
+  filterMapByFields(o, fields):: { [field]: o[field] for field in std.setInter(std.objectFields(o), fields) },
 
   // Convert from SI unit suffixes to regular number
   siToNum(n):: (
@@ -136,24 +136,24 @@
     },
   },
 
-  List(): {
+  List():: {
     apiVersion: "v1",
     kind: "List",
     items_:: {},
     items: $.objectValues(self.items_),
   },
 
-  Namespace(name): $._Object("v1", "Namespace", name) {
+  Namespace(name):: $._Object("v1", "Namespace", name) {
   },
 
-  Endpoints(name): $._Object("v1", "Endpoints", name) {
+  Endpoints(name):: $._Object("v1", "Endpoints", name) {
     Ip(addr):: { ip: addr },
     Port(p):: { port: p },
 
     subsets: [],
   },
 
-  Service(name): $._Object("v1", "Service", name) {
+  Service(name):: $._Object("v1", "Service", name) {
     local service = self,
 
     target_pod:: error "service target_pod required",
@@ -186,20 +186,20 @@
     },
   },
 
-  PersistentVolume(name): $._Object("v1", "PersistentVolume", name) {
+  PersistentVolume(name):: $._Object("v1", "PersistentVolume", name) {
     spec: {},
   },
 
   // TODO: This is a terrible name
-  PersistentVolumeClaimVolume(pvc): {
+  PersistentVolumeClaimVolume(pvc):: {
     persistentVolumeClaim: { claimName: pvc.metadata.name },
   },
 
-  StorageClass(name): $._Object("storage.k8s.io/v1beta1", "StorageClass", name) {
+  StorageClass(name):: $._Object("storage.k8s.io/v1beta1", "StorageClass", name) {
     provisioner: error "provisioner required",
   },
 
-  PersistentVolumeClaim(name): $._Object("v1", "PersistentVolumeClaim", name) {
+  PersistentVolumeClaim(name):: $._Object("v1", "PersistentVolumeClaim", name) {
     local pvc = self,
 
     storageClass:: null,
@@ -222,7 +222,7 @@
     },
   },
 
-  Container(name): {
+  Container(name):: {
     name: name,
     image: error "container image value required",
     imagePullPolicy: if std.endsWith(self.image, ":latest") then "Always" else "IfNotPresent",
@@ -254,14 +254,14 @@
 
     stdin: false,
     tty: false,
-    assert (!$._assert) || (!self.tty || self.stdin) : "tty=true requires stdin=true",
+    assert (! $._assert) || (!self.tty || self.stdin) : "tty=true requires stdin=true",
   },
 
-  PodDisruptionBudget(name): $._Object("policy/v1beta1", "PodDisruptionBudget", name) {
+  PodDisruptionBudget(name):: $._Object("policy/v1beta1", "PodDisruptionBudget", name) {
     local this = self,
     target_pod:: error "target_pod required",
     spec: {
-      assert (!$._assert) || $.boolXor(
+      assert (! $._assert) || $.boolXor(
         std.objectHas(self, "minAvailable"),
         std.objectHas(self, "maxUnavailable")
       ) : "PDB '%s': exactly one of minAvailable/maxUnavailable required" % name,
@@ -271,11 +271,11 @@
     },
   },
 
-  Pod(name): $._Object("v1", "Pod", name) {
+  Pod(name):: $._Object("v1", "Pod", name) {
     spec: $.PodSpec,
   },
 
-  PodSpec: {
+  PodSpec:: {
     // The 'first' container is used in various defaults in k8s.
     local container_names = std.objectFields(self.containers_),
     default_container:: if std.length(container_names) > 1 then "default" else container_names[0],
@@ -283,7 +283,7 @@
 
     local container_names_ordered = [self.default_container] + [n for n in container_names if n != self.default_container],
     containers: (
-      assert (!$._assert) || std.length(self.containers_) > 0 : "Pod must have at least one container (via containers_ map)";
+      assert (! $._assert) || std.length(self.containers_) > 0 : "Pod must have at least one container (via containers_ map)";
       [{ name: $.hyphenate(name) } + self.containers_[name] for name in container_names_ordered if self.containers_[name] != null]
     ),
 
@@ -302,7 +302,7 @@
 
     terminationGracePeriodSeconds: 30,
 
-    assert (!$._assert) || std.length(self.containers) > 0 : "Pod must have at least one container (via containers array)",
+    assert (! $._assert) || std.length(self.containers) > 0 : "Pod must have at least one container (via containers array)",
 
     // Return an array of pod's ports numbers
     ports(proto):: [
@@ -320,15 +320,15 @@
 
   },
 
-  EmptyDirVolume(): {
+  EmptyDirVolume():: {
     emptyDir: {},
   },
 
-  HostPathVolume(path, type=""): {
+  HostPathVolume(path, type=""):: {
     hostPath: { path: path, type: type },
   },
 
-  GitRepoVolume(repository, revision): {
+  GitRepoVolume(repository, revision):: {
     gitRepo: {
       repository: repository,
 
@@ -337,28 +337,28 @@
     },
   },
 
-  SecretVolume(secret): {
+  SecretVolume(secret):: {
     secret: { secretName: secret.metadata.name },
   },
 
-  ConfigMapVolume(configmap): {
+  ConfigMapVolume(configmap):: {
     configMap: { name: configmap.metadata.name },
   },
 
-  ConfigMap(name): $._Object("v1", "ConfigMap", name) {
+  ConfigMap(name):: $._Object("v1", "ConfigMap", name) {
     data: {},
   },
 
   // subtype of EnvVarSource
-  ConfigMapRef(configmap, key): {
-    assert (!$._assert) || std.objectHas(configmap.data, key) : "ConfigMap '%s' doesn't have '%s' field in configmap.data" % [configmap.metadata.name, key],
+  ConfigMapRef(configmap, key):: {
+    assert (! $._assert) || std.objectHas(configmap.data, key) : "ConfigMap '%s' doesn't have '%s' field in configmap.data" % [configmap.metadata.name, key],
     configMapKeyRef: {
       name: configmap.metadata.name,
       key: key,
     },
   },
 
-  Secret(name): $._Object("v1", "Secret", name) {
+  Secret(name):: $._Object("v1", "Secret", name) {
     local secret = self,
 
     type: "Opaque",
@@ -367,8 +367,8 @@
   },
 
   // subtype of EnvVarSource
-  SecretKeyRef(secret, key): {
-    assert (!$._assert) || std.objectHas(secret.data, key) : "Secret '%s' doesn't have '%s' field in secret.data" % [secret.metadata.name, key],
+  SecretKeyRef(secret, key):: {
+    assert (! $._assert) || std.objectHas(secret.data, key) : "Secret '%s' doesn't have '%s' field in secret.data" % [secret.metadata.name, key],
     secretKeyRef: {
       name: secret.metadata.name,
       key: key,
@@ -376,7 +376,7 @@
   },
 
   // subtype of EnvVarSource
-  FieldRef(key): {
+  FieldRef(key):: {
     fieldRef: {
       apiVersion: "v1",
       fieldPath: key,
@@ -384,14 +384,14 @@
   },
 
   // subtype of EnvVarSource
-  ResourceFieldRef(key, divisor="1"): {
+  ResourceFieldRef(key, divisor="1"):: {
     resourceFieldRef: {
       resource: key,
       divisor: std.toString(divisor),
     },
   },
 
-  Deployment(name): $._Object("apps/v1", "Deployment", name) {
+  Deployment(name):: $._Object("apps/v1", "Deployment", name) {
     local deployment = self,
 
     spec: {
@@ -440,13 +440,13 @@
     },
   },
 
-  CrossVersionObjectReference(target): {
+  CrossVersionObjectReference(target):: {
     apiVersion: target.apiVersion,
     kind: target.kind,
     name: target.metadata.name,
   },
 
-  HorizontalPodAutoscaler(name): $._Object("autoscaling/v1", "HorizontalPodAutoscaler", name) {
+  HorizontalPodAutoscaler(name):: $._Object("autoscaling/v1", "HorizontalPodAutoscaler", name) {
     local hpa = self,
 
     target:: error "target required",
@@ -457,11 +457,11 @@
       minReplicas: hpa.target.spec.replicas,
       maxReplicas: error "maxReplicas required",
 
-      assert (!$._assert) || self.maxReplicas >= self.minReplicas,
+      assert (! $._assert) || self.maxReplicas >= self.minReplicas,
     },
   },
 
-  StatefulSet(name): $._Object("apps/v1", "StatefulSet", name) {
+  StatefulSet(name):: $._Object("apps/v1", "StatefulSet", name) {
     local sset = self,
 
     spec: {
@@ -497,11 +497,11 @@
       ],
 
       replicas: 1,
-      assert (!$._assert) || self.replicas >= 1,
+      assert (! $._assert) || self.replicas >= 1,
     },
   },
 
-  Job(name): $._Object("batch/v1", "Job", name) {
+  Job(name):: $._Object("batch/v1", "Job", name) {
     local job = self,
 
     spec: $.JobSpec {
@@ -513,7 +513,7 @@
     },
   },
 
-  CronJob(name): $._Object("batch/v1beta1", "CronJob", name) {
+  CronJob(name):: $._Object("batch/v1beta1", "CronJob", name) {
     local cronjob = self,
 
     spec: {
@@ -534,7 +534,7 @@
     },
   },
 
-  JobSpec: {
+  JobSpec:: {
     local this = self,
 
     template: {
@@ -546,7 +546,7 @@
     parallelism: 1,
   },
 
-  DaemonSet(name): $._Object("apps/v1", "DaemonSet", name) {
+  DaemonSet(name):: $._Object("apps/v1", "DaemonSet", name) {
     local ds = self,
     spec: {
       updateStrategy: {
@@ -569,7 +569,7 @@
     },
   },
 
-  Ingress(name): $._Object("networking.k8s.io/v1beta1", "Ingress", name) {
+  Ingress(name):: $._Object("networking.k8s.io/v1beta1", "Ingress", name) {
     spec: {},
 
     local rel_paths = [
@@ -578,15 +578,15 @@
       for p in r.http.paths
       if !std.startsWith(p.path, "/")
     ],
-    assert (!$._assert) || std.length(rel_paths) == 0 : "paths must be absolute: " + rel_paths,
+    assert (! $._assert) || std.length(rel_paths) == 0 : "paths must be absolute: " + rel_paths,
   },
 
-  ThirdPartyResource(name): $._Object("extensions/v1beta1", "ThirdPartyResource", name) {
+  ThirdPartyResource(name):: $._Object("extensions/v1beta1", "ThirdPartyResource", name) {
     versions_:: [],
     versions: [{ name: n } for n in self.versions_],
   },
 
-  CustomResourceDefinition(group, version, kind): {
+  CustomResourceDefinition(group, version, kind):: {
     local this = self,
     apiVersion: "apiextensions.k8s.io/v1beta1",
     kind: "CustomResourceDefinition",
@@ -606,30 +606,30 @@
     },
   },
 
-  ServiceAccount(name): $._Object("v1", "ServiceAccount", name) {
+  ServiceAccount(name):: $._Object("v1", "ServiceAccount", name) {
   },
 
-  Role(name): $._Object("rbac.authorization.k8s.io/v1", "Role", name) {
+  Role(name):: $._Object("rbac.authorization.k8s.io/v1", "Role", name) {
     rules: [],
   },
 
-  ClusterRole(name): $.Role(name) {
+  ClusterRole(name):: $.Role(name) {
     kind: "ClusterRole",
   },
 
-  Group(name): {
+  Group(name):: {
     kind: "Group",
     name: name,
     apiGroup: "rbac.authorization.k8s.io",
   },
 
-  User(name): {
+  User(name):: {
     kind: "User",
     name: name,
     apiGroup: "rbac.authorization.k8s.io",
   },
 
-  RoleBinding(name): $._Object("rbac.authorization.k8s.io/v1", "RoleBinding", name) {
+  RoleBinding(name):: $._Object("rbac.authorization.k8s.io/v1", "RoleBinding", name) {
     local rb = self,
 
     subjects_:: [],
@@ -647,18 +647,18 @@
     },
   },
 
-  ClusterRoleBinding(name): $.RoleBinding(name) {
+  ClusterRoleBinding(name):: $.RoleBinding(name) {
     kind: "ClusterRoleBinding",
   },
 
   // NB: encryptedData can be imported into a SealedSecret as follows:
   // kubectl get secret ... -ojson mysec | kubeseal | jq -r .spec.encryptedData > sealedsecret.json
   //   encryptedData: std.parseJson(importstr "sealedsecret.json")
-  SealedSecret(name): $._Object("bitnami.com/v1alpha1", "SealedSecret", name) {
+  SealedSecret(name):: $._Object("bitnami.com/v1alpha1", "SealedSecret", name) {
     spec: {
       encryptedData: {},
     },
-    assert (!$._assert) || std.length(std.objectFields(self.spec.encryptedData)) != 0 : "SealedSecret '%s' has empty encryptedData field" % name,
+    assert (! $._assert) || std.length(std.objectFields(self.spec.encryptedData)) != 0 : "SealedSecret '%s' has empty encryptedData field" % name,
   },
 
   // NB: helper method to access several Kubernetes objects podRef,
@@ -698,7 +698,7 @@
   // NetworkPolicy returned object will have "Ingress", "Egress" policyTypes auto-set
   // based on populated spec.ingress or spec.egress
   // See tests/test-simple-validate.jsonnet for example(s).
-  NetworkPolicy(name): $._Object("networking.k8s.io/v1", "NetworkPolicy", name) {
+  NetworkPolicy(name):: $._Object("networking.k8s.io/v1", "NetworkPolicy", name) {
     local networkpolicy = self,
     spec: {
       policyTypes: std.prune([

@@ -2,7 +2,7 @@ local pelotech = import '../pelotech.libsonnet';
 
 {
     app: pelotech.nodejs_application('configured') {
-        config+: {
+        config+:: {
             appConfig: { hello: 'world' },
         },
     },
