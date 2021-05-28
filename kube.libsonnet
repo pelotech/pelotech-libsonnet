@@ -222,6 +222,10 @@
     },
   },
 
+  SecretRef(secret):: {
+    secretRef: { name: secret.metadata.name },
+  },
+
   Container(name):: {
     name: name,
     image: error "container image value required",
@@ -242,6 +246,8 @@
 
     env_:: {},
     env: self.envList(self.env_),
+
+    envFrom: [],
 
     args_:: {},
     args: ["--%s=%s" % kv for kv in $.objectItems(self.args_)],
