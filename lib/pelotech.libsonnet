@@ -121,7 +121,7 @@ local kube = import 'kube.libsonnet';
         } else null,
     },
 
-    backstage(name, namespace='backstage'):: {
+    backstage_backend(name, namespace='backstage'):: {
         local backstage = self,
 
         appDir:: '/app',

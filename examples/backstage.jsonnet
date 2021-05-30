@@ -1,7 +1,8 @@
-local pelotech = import '../pelotech.libsonnet';
+local pelotech = import '../lib/pelotech.libsonnet';
 
-{
-    backend: pelotech.backstage('backstage') {
+
+function(values={}) {
+    backend: pelotech.backstage_backend('backstage') {
         baseUrl: 'http://localhost:7000',
     },
 }
