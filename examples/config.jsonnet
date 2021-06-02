@@ -12,6 +12,12 @@ local pelotech = import '../lib/pelotech.libsonnet';
                         paths: ['/'],
                     },
                 ],
+                tls: { 
+                    enabled: true,
+                    cert_manager: {
+                        issuer: 'test'
+                    },
+                },
             },
         },
     },

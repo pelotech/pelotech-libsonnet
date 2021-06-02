@@ -34,18 +34,33 @@ local kube = import 'kube.libsonnet';
 
         // Make sure we have at least one host configuration
         assert std.length(this.values.hosts) != 0 : 'at least one host dictionary must be provided for ingress in the form of { name: "hostname.example.com", paths: ["/"] }. The "paths" key is optional and defaults to that shown.',
+        
         // Make sure that if TLS is enabled we have at least a cluster_issuer or an issuer.
-        assert !this.values.tls.enabled || (this.values.tls.cert_manager.cluster_issuer != '' || this.values.tls.cert_manager.issuer != '') : 'when tls is enabled for ingress, one of tls.cert_manager.cluster_issuer or values.tls.cert_manager.issuer must be provided',            
+        assert  !this.values.tls.enabled || 
+                std.objectHas(this.values.tls, 'cert_manager') &&
+                ((std.objectHas(this.values.tls.cert_manager, 'cluster_issuer') && this.values.tls.cert_manager.cluster_issuer != '') || 
+                (std.objectHas(this.values.tls.cert_manager, 'issuer') && this.values.tls.cert_manager.issuer != ''))
+                : 'when tls is enabled for ingress, one of tls.cert_manager.cluster_issuer or values.tls.cert_manager.issuer must be provided',            
+
+        local cluster_issuer = if this.values.tls.enabled 
+                                && std.objectHas(this.values.tls, 'cert_manager') 
+                                && std.objectHas(this.values.tls.cert_manager, 'cluster_issuer') 
+                                then this.values.tls.cert_manager.cluster_issuer else '',
+
+        local issuer = if this.values.tls.enabled 
+                                && std.objectHas(this.values.tls, 'cert_manager') 
+                                && std.objectHas(this.values.tls.cert_manager, 'issuer') 
+                                then this.values.tls.cert_manager.issuer else '',
 
 
         metadata+: {
             labels: this.values.labels,
             annotations: {
                 'kubernetes.io/ingress.class': this.values.ingress_class,  
-            } + if this.values.tls.enabled && this.values.tls.cert_manager.cluster_issuer != '' then {
-                'cert-manager.io/cluster-issuer': this.values.tls.cert_manager.cluster_issuer
-            } else if this.values.tls.enabled && this.values.tls.cert_manager.issuer != '' then {
-                'cert-manager.io/issuer': this.values.tls.cert_manager.issuer
+            } + if this.values.tls.enabled && cluster_issuer != '' then {
+                'cert-manager.io/cluster-issuer': cluster_issuer
+            } else if this.values.tls.enabled && issuer != '' then {
+                'cert-manager.io/issuer': issuer
             } else {},
         },
         spec: {
