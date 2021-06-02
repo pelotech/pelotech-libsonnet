@@ -2,6 +2,71 @@ local kube = import 'kube.libsonnet';
 
 {
 
+    SimpleIngress(name):: {
+        local this = self,
+
+        target_service:: error 'target_service is required for ingress',
+
+        values:: {
+            labels: {},
+            hosts: [],
+            tls: {
+                enabled: false,
+                secretName: '',
+                cert_manager: {
+                    cluster_issuer: '',
+                    issuer: ''
+                },
+            },
+            ingress_class: error 'must specify an ingress class'
+        },
+
+        local tls_secret = if this.values.tls.secretName != '' then this.values.tls.secretName else '%s-tls' % name,
+
+        assert std.length(this.values.hosts) != 0 : 'at least one host dictionary must be provided in the form of { name: "hostname.example.com", paths: ["/"] }',
+        assert !this.values.tls.enabled || (this.values.tls.cert_manager.cluster_issuer != '' || this.values.tls.cert_manager.issuer != '') : 'when tls is enabled, one of values.tls.cert_manager.cluster_issuer or values.tls.cert_manager.issuer must be provided',            
+
+        ingress: kube._Object('extensions/v1beta1', "Ingress", name) {
+            metadata+: {
+                labels: this.values.labels,
+                annotations: {
+                    'kubernetes.io/ingress.class': this.values.ingress_class,  
+                } + if this.values.tls.enabled && this.values.tls.cert_manager.cluster_issuer != '' then {
+                    'cert-manager.io/cluster-issuer': this.values.tls.cert_manager.cluster_issuer
+                } else if this.values.tls.enabled && this.values.tls.cert_manager.issuer != '' then {
+                    'cert-manager.io/issuer': this.values.tls.cert_manager.issuer
+                } else {},
+            },
+            spec: {
+                tls: [
+                    { 
+                        hosts: [           
+                            assert host.name != '' : 'values.hosts dictionaries must contain a "name"';
+                            host.name for host in this.values.hosts
+                        ],
+                        secretName: tls_secret
+                    },
+                ],
+                rules: [
+                    {
+                        host: host.name,
+                        http: {
+                            paths: if !std.objectHas(host, 'paths') || std.length(host.paths) == 0 then [
+                                { 
+                                    path: '/', backend: { serviceName: this.target_service.metadata.name, servicePort: 'http' } 
+                                },
+                            ] else [
+                                {
+                                    path: path, backend: { serviceName: this.target_service.metadata.name, servicePort: 'http' },
+                                } for path in host.paths
+                            ],
+                        }, 
+                    } for host in this.values.hosts
+                ],
+            },
+        }
+    },
+
     application(name):: {
         local this = self,
 
@@ -20,6 +85,20 @@ local kube = import 'kube.libsonnet';
                 annotations: {},
                 type: 'ClusterIP',
                 port: 8080,
+            },
+            ingress: {
+                enabled: false,
+                labels: this.values.extraLabels,
+                hosts: [],
+                tls: {
+                    enabled: false,
+                    secretName: '',
+                    cert_manager: {
+                        cluster_issuer: '',
+                        issuer: ''
+                    },
+                },
+                ingress_class: 'nginx-internal'
             },
             healthCheck: '/healthz',
             environment: {},
@@ -86,6 +165,13 @@ local kube = import 'kube.libsonnet';
                 type: this.values.service.type,
             },
         } else null,
+
+        assert this.values.service.enabled || this.values.ingress.enabled : 'ingress can only be enabled when service is enabled',
+
+        ingress: if this.values.ingress.enabled then $.SimpleIngress(name) {
+            target_service: this.service,
+            values: this.values.ingress,
+        } else null,
     },
 
     nodejs_application(name):: $.application(name) {
@@ -108,7 +194,6 @@ local kube = import 'kube.libsonnet';
             volumes+: if this.configmap == null then {} else {
                 config: kube.ConfigMapVolume(this.configmap)
             },
-
             appConfig: {},
             appDirectory: '/usr/src/app',
         },
