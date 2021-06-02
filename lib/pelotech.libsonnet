@@ -23,8 +23,8 @@ local kube = import 'kube.libsonnet';
 
         local tls_secret = if this.values.tls.secretName != '' then this.values.tls.secretName else '%s-tls' % name,
 
-        assert std.length(this.values.hosts) != 0 : 'at least one host dictionary must be provided in the form of { name: "hostname.example.com", paths: ["/"] }',
-        assert !this.values.tls.enabled || (this.values.tls.cert_manager.cluster_issuer != '' || this.values.tls.cert_manager.issuer != '') : 'when tls is enabled, one of values.tls.cert_manager.cluster_issuer or values.tls.cert_manager.issuer must be provided',            
+        assert std.length(this.values.hosts) != 0 : 'at least one host dictionary must be provided for ingress in the form of { name: "hostname.example.com", paths: ["/"] }. The "paths" key is optional and defaults to that shown.',
+        assert !this.values.tls.enabled || (this.values.tls.cert_manager.cluster_issuer != '' || this.values.tls.cert_manager.issuer != '') : 'when tls is enabled for ingress, one of tls.cert_manager.cluster_issuer or values.tls.cert_manager.issuer must be provided',            
 
         ingress: kube._Object('extensions/v1beta1', "Ingress", name) {
             metadata+: {
@@ -41,7 +41,7 @@ local kube = import 'kube.libsonnet';
                 tls: [
                     { 
                         hosts: [           
-                            assert host.name != '' : 'values.hosts dictionaries must contain a "name"';
+                            assert host.name != '' : 'ingress hosts dictionaries must contain a "name"';
                             host.name for host in this.values.hosts
                         ],
                         secretName: tls_secret
