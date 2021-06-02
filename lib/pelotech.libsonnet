@@ -29,9 +29,6 @@ local kube = import 'kube.libsonnet';
             ingress_class: error 'must specify an ingress class'
         },
 
-        // Create a local reference to the name that will be used for the tls_secret, if enabled.
-        local tls_secret = if std.objectHas(this.values.tls, 'secretName') && this.values.tls.secretName != '' then this.values.tls.secretName else '%s-tls' % name,
-
         // Make sure we have at least one host configuration
         assert std.length(this.values.hosts) != 0 : 'at least one host dictionary must be provided for ingress in the form of { name: "hostname.example.com", paths: ["/"] }. The "paths" key is optional and defaults to that shown.',
         
@@ -47,6 +44,9 @@ local kube = import 'kube.libsonnet';
                 )
                 : 'when tls is enabled for ingress, one of tls.cert_manager.cluster_issuer or tls.cert_manager.issuer must be provided',            
 
+        // Create a local reference to the name that will be used for the tls_secret, if enabled.
+        local tls_secret = if std.objectHas(this.values.tls, 'secretName') && this.values.tls.secretName != '' then this.values.tls.secretName else '%s-tls' % name,
+
         // Take a local reference to the cluster_issuer if configured
         local cluster_issuer = if this.values.tls.enabled 
                                 && std.objectHas(this.values.tls, 'cert_manager') 
@@ -59,7 +59,7 @@ local kube = import 'kube.libsonnet';
                                 && std.objectHas(this.values.tls.cert_manager, 'issuer') 
                                 then this.values.tls.cert_manager.issuer else '',
 
-        // BEGIN Ingress data
+        // BEGIN Ingress Definition
 
         metadata+: {
             labels: this.values.labels,
@@ -75,7 +75,7 @@ local kube = import 'kube.libsonnet';
             tls: if this.values.tls.enabled then [
                 { 
                     hosts: [           
-                        assert host.name != '' : 'ingress hosts dictionaries must contain a "name"';
+                        assert std.objectHas(host, 'name') && host.name != '' : 'ingress hosts dictionaries must contain a "name" field';
                         host.name for host in this.values.hosts
                     ],
                     secretName: tls_secret
@@ -98,6 +98,8 @@ local kube = import 'kube.libsonnet';
                 } for host in this.values.hosts
             ],
         },
+
+        // END Ingress Definition
     },
 
     // The application function provides a framework for the generic deployment, optional service, optional ingress layout.
