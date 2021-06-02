@@ -36,22 +36,30 @@ local kube = import 'kube.libsonnet';
         assert std.length(this.values.hosts) != 0 : 'at least one host dictionary must be provided for ingress in the form of { name: "hostname.example.com", paths: ["/"] }. The "paths" key is optional and defaults to that shown.',
         
         // Make sure that if TLS is enabled we have at least a cluster_issuer or an issuer.
-        assert  !this.values.tls.enabled || 
-                std.objectHas(this.values.tls, 'cert_manager') &&
-                ((std.objectHas(this.values.tls.cert_manager, 'cluster_issuer') && this.values.tls.cert_manager.cluster_issuer != '') || 
-                (std.objectHas(this.values.tls.cert_manager, 'issuer') && this.values.tls.cert_manager.issuer != ''))
+        assert  !this.values.tls.enabled || // If tls is disabled - skip following checks
+                std.objectHas(this.values.tls, 'cert_manager') &&  // make sure we have a cert_manager object
+                (
+                    // if we have a cluster_issuer, make sure it is not empty
+                    (std.objectHas(this.values.tls.cert_manager, 'cluster_issuer') && this.values.tls.cert_manager.cluster_issuer != '') 
+                                                    || 
+                    // if we have an issuer instead, make sure it is not empty
+                    (std.objectHas(this.values.tls.cert_manager, 'issuer') && this.values.tls.cert_manager.issuer != '')
+                )
                 : 'when tls is enabled for ingress, one of tls.cert_manager.cluster_issuer or values.tls.cert_manager.issuer must be provided',            
 
+        // Take a local reference to the cluster_issuer if configured
         local cluster_issuer = if this.values.tls.enabled 
                                 && std.objectHas(this.values.tls, 'cert_manager') 
                                 && std.objectHas(this.values.tls.cert_manager, 'cluster_issuer') 
                                 then this.values.tls.cert_manager.cluster_issuer else '',
 
+        // Take a local reference to the issuer if configured
         local issuer = if this.values.tls.enabled 
                                 && std.objectHas(this.values.tls, 'cert_manager') 
                                 && std.objectHas(this.values.tls.cert_manager, 'issuer') 
                                 then this.values.tls.cert_manager.issuer else '',
 
+        // BEGIN Ingress data
 
         metadata+: {
             labels: this.values.labels,
