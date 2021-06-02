@@ -195,6 +195,7 @@ local kube = import 'kube.libsonnet';
             },
             appConfig: {},
             appDirectory: '/usr/src/app',
+            healthCheck: '/health-check'
         },
 
         configmap: if this.values.appConfig != {} then kube.ConfigMap('%s-config' % name) {
