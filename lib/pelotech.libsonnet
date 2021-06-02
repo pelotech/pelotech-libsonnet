@@ -45,7 +45,7 @@ local kube = import 'kube.libsonnet';
                     // if we have an issuer instead, make sure it is not empty
                     (std.objectHas(this.values.tls.cert_manager, 'issuer') && this.values.tls.cert_manager.issuer != '')
                 )
-                : 'when tls is enabled for ingress, one of tls.cert_manager.cluster_issuer or values.tls.cert_manager.issuer must be provided',            
+                : 'when tls is enabled for ingress, one of tls.cert_manager.cluster_issuer or tls.cert_manager.issuer must be provided',            
 
         // Take a local reference to the cluster_issuer if configured
         local cluster_issuer = if this.values.tls.enabled 
