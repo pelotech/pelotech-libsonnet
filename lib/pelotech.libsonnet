@@ -2,6 +2,14 @@ local kube = import 'kube.libsonnet';
 
 {
 
+    // SimpleIngress provides a single service ingress that can be routed to from multiple hostnames and/or paths.
+    // In addition to a name the additional information must be provided:
+    //
+    //    target_service:: The service object that the ingress should use for its backend
+    //    values:: See below for more information. Certain values being set trigger downstream assertions.
+    //             For example, enabling TLS will require a cert_manager configuration as well. If an explicit
+    //             secretName is not provided, one will be generated from the name in the format of "${name}-tls".
+    //
     SimpleIngress(name):: kube._Object('extensions/v1beta1', "Ingress", name) {
         local this = self,
 
@@ -21,9 +29,12 @@ local kube = import 'kube.libsonnet';
             ingress_class: error 'must specify an ingress class'
         },
 
+        // Create a local reference to the name that will be used for the tls_secret, if enabled.
         local tls_secret = if this.values.tls.secretName != '' then this.values.tls.secretName else '%s-tls' % name,
 
+        // Make sure we have at least one host configuration
         assert std.length(this.values.hosts) != 0 : 'at least one host dictionary must be provided for ingress in the form of { name: "hostname.example.com", paths: ["/"] }. The "paths" key is optional and defaults to that shown.',
+        // Make sure that if TLS is enabled we have at least a cluster_issuer or an issuer.
         assert !this.values.tls.enabled || (this.values.tls.cert_manager.cluster_issuer != '' || this.values.tls.cert_manager.issuer != '') : 'when tls is enabled for ingress, one of tls.cert_manager.cluster_issuer or values.tls.cert_manager.issuer must be provided',            
 
 
@@ -66,6 +77,8 @@ local kube = import 'kube.libsonnet';
         },
     },
 
+    // The application function provides a framework for the generic deployment, optional service, optional ingress layout.
+    // See the values:: below for the possible configurations.
     application(name):: {
         local this = self,
 
@@ -112,6 +125,7 @@ local kube = import 'kube.libsonnet';
             lifecycle: {},
         },
 
+        // The Deployment object
         deployment: kube.Deployment(name) {
             metadata+: {
                 namespace: this.values.namespace,
@@ -155,6 +169,7 @@ local kube = import 'kube.libsonnet';
             },
         },
 
+        // A Service object if enabled
         service: if this.values.service.enabled then kube.Service(name) {
             target_pod: this.deployment.spec.template,
             metadata+: {
@@ -167,6 +182,7 @@ local kube = import 'kube.libsonnet';
 
         assert this.values.service.enabled || this.values.ingress.enabled : 'ingress can only be enabled when service is enabled',
 
+        // An ingress to the service if enabled.
         ingress: if this.values.ingress.enabled then $.SimpleIngress(name) {
             target_service: this.service,
             values: this.values.ingress,
