@@ -5,7 +5,7 @@ local kube = import 'kube.libsonnet';
     application(name):: {
         local this = self,
 
-        config:: {
+        values:: {
             namespace: 'default',
             extraLabels: {},
             replicaCount: 1,
@@ -13,7 +13,7 @@ local kube = import 'kube.libsonnet';
                 registry: 'docker.io',
                 repository: error 'image repository must be provided',
                 tag: 'latest',
-                pullPolicy: if this.config.image.tag == 'latest' then 'Always' else 'IfNotPresent',
+                pullPolicy: if this.values.image.tag == 'latest' then 'Always' else 'IfNotPresent',
             },
             service: {
                 enabled: false,
@@ -36,54 +36,54 @@ local kube = import 'kube.libsonnet';
 
         deployment: kube.Deployment(name) {
             metadata+: {
-                namespace: this.config.namespace,
-                labels+: if this.config.extraLabels != {} then this.config.extraLabels else {},
+                namespace: this.values.namespace,
+                labels+: if this.values.extraLabels != {} then this.values.extraLabels else {},
             },
             spec+: {
-                replicas: this.config.replicaCount,
+                replicas: this.values.replicaCount,
                 minReadySeconds: 10,
                 template+: {
                     metadata+: {
-                        annotations+: this.config.podAnnotations,
+                        annotations+: this.values.podAnnotations,
                     },
                     spec+: {
                         terminationGracePeriodSeconds: 10,
                         containers_+: {
                             app: kube.Container(name) {
-                                image: '%s/%s:%s' % [this.config.image.registry, this.config.image.repository, this.config.image.tag],
-                                resources: this.config.resources,
-                                env_+: this.config.environment,
-                                envFrom+: this.config.environmentFrom,
-                                ports_+: if this.config.service.enabled then { http: { containerPort: this.config.service.port} } else {},
-                                livenessProbe: if this.config.healthCheck != '' then {
+                                image: '%s/%s:%s' % [this.values.image.registry, this.values.image.repository, this.values.image.tag],
+                                resources: this.values.resources,
+                                env_+: this.values.environment,
+                                envFrom+: this.values.environmentFrom,
+                                ports_+: if this.values.service.enabled then { http: { containerPort: this.values.service.port} } else {},
+                                livenessProbe: if this.values.healthCheck != '' then {
                                     httpGet: {
-                                        path: this.config.healthCheck,
+                                        path: this.values.healthCheck,
                                         port: 'http',
                                     },
                                 } else null,
-                                readinessProbe: if this.config.healthCheck != '' then {
+                                readinessProbe: if this.values.healthCheck != '' then {
                                     httpGet: {
-                                        path: this.config.healthCheck,
+                                        path: this.values.healthCheck,
                                         port: 'http',
                                     },
                                 } else null,
-                                volumeMounts_+: this.config.volumeMounts,
-                                lifecycle: this.config.lifecycle,
+                                volumeMounts_+: this.values.volumeMounts,
+                                lifecycle: this.values.lifecycle,
                             },
                         },
-                        volumes_+: this.config.volumes,
+                        volumes_+: this.values.volumes,
                     },
                 },
             },
         },
 
-        service: if this.config.service.enabled then kube.Service(name) {
+        service: if this.values.service.enabled then kube.Service(name) {
             target_pod: this.deployment.spec.template,
             metadata+: {
-                namespace: this.config.namespace,
+                namespace: this.values.namespace,
             },
             spec+: {
-                type: this.config.service.type,
+                type: this.values.service.type,
             },
         } else null,
     },
@@ -91,7 +91,7 @@ local kube = import 'kube.libsonnet';
     nodejs_application(name):: $.application(name) {
         local this = self,
 
-        config+:: {
+        values+:: {
             image+: {
                 repository: 'node'
             },
@@ -101,7 +101,7 @@ local kube = import 'kube.libsonnet';
             },
             volumeMounts+: if this.configmap == null then {} else {
                 config: { 
-                    mountPath: '%s/config/production.json' % this.config.appDirectory,
+                    mountPath: '%s/config/production.json' % this.values.appDirectory,
                     subPath: 'configuration',
                 }
             },
@@ -113,11 +113,11 @@ local kube = import 'kube.libsonnet';
             appDirectory: '/usr/src/app',
         },
 
-        configmap: if this.config.appConfig != {} then kube.ConfigMap('%s-config' % name) {
+        configmap: if this.values.appConfig != {} then kube.ConfigMap('%s-config' % name) {
             metadata+: {
-                labels+: if this.config.extraLabels != {} then this.config.extraLabels else {},
+                labels+: if this.values.extraLabels != {} then this.values.extraLabels else {},
             },
-            data: { configuration: std.manifestJsonEx(this.config.appConfig, '  ') },
+            data: { configuration: std.manifestJsonEx(this.values.appConfig, '  ') },
         } else null,
     },
 
@@ -166,7 +166,7 @@ local kube = import 'kube.libsonnet';
         },
 
         database: $.application('%s-postgres' % name) {
-            config+:: {
+            values+:: {
                 namespace: namespace,
                 healthCheck: '',
                 image+: {
@@ -195,7 +195,7 @@ local kube = import 'kube.libsonnet';
         },
 
         backend: $.application('%s-backend' % name) {
-            config+:: {
+            values+:: {
                 namespace: namespace,
                 healthCheck: '',
                 podAnnotations: {
