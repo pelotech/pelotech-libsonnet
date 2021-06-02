@@ -30,7 +30,7 @@ local kube = import 'kube.libsonnet';
         },
 
         // Create a local reference to the name that will be used for the tls_secret, if enabled.
-        local tls_secret = if this.values.tls.secretName != '' then this.values.tls.secretName else '%s-tls' % name,
+        local tls_secret = if std.objectHas(this.values.tls, 'secretName') && this.values.tls.secretName != '' then this.values.tls.secretName else '%s-tls' % name,
 
         // Make sure we have at least one host configuration
         assert std.length(this.values.hosts) != 0 : 'at least one host dictionary must be provided for ingress in the form of { name: "hostname.example.com", paths: ["/"] }. The "paths" key is optional and defaults to that shown.',
