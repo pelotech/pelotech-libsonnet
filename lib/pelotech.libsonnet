@@ -2,7 +2,7 @@ local kube = import 'kube.libsonnet';
 
 {
 
-    SimpleIngress(name):: {
+    SimpleIngress(name):: kube._Object('extensions/v1beta1', "Ingress", name) {
         local this = self,
 
         target_service:: error 'target_service is required for ingress',
@@ -26,45 +26,44 @@ local kube = import 'kube.libsonnet';
         assert std.length(this.values.hosts) != 0 : 'at least one host dictionary must be provided for ingress in the form of { name: "hostname.example.com", paths: ["/"] }. The "paths" key is optional and defaults to that shown.',
         assert !this.values.tls.enabled || (this.values.tls.cert_manager.cluster_issuer != '' || this.values.tls.cert_manager.issuer != '') : 'when tls is enabled for ingress, one of tls.cert_manager.cluster_issuer or values.tls.cert_manager.issuer must be provided',            
 
-        ingress: kube._Object('extensions/v1beta1', "Ingress", name) {
-            metadata+: {
-                labels: this.values.labels,
-                annotations: {
-                    'kubernetes.io/ingress.class': this.values.ingress_class,  
-                } + if this.values.tls.enabled && this.values.tls.cert_manager.cluster_issuer != '' then {
-                    'cert-manager.io/cluster-issuer': this.values.tls.cert_manager.cluster_issuer
-                } else if this.values.tls.enabled && this.values.tls.cert_manager.issuer != '' then {
-                    'cert-manager.io/issuer': this.values.tls.cert_manager.issuer
-                } else {},
-            },
-            spec: {
-                tls: [
-                    { 
-                        hosts: [           
-                            assert host.name != '' : 'ingress hosts dictionaries must contain a "name"';
-                            host.name for host in this.values.hosts
+
+        metadata+: {
+            labels: this.values.labels,
+            annotations: {
+                'kubernetes.io/ingress.class': this.values.ingress_class,  
+            } + if this.values.tls.enabled && this.values.tls.cert_manager.cluster_issuer != '' then {
+                'cert-manager.io/cluster-issuer': this.values.tls.cert_manager.cluster_issuer
+            } else if this.values.tls.enabled && this.values.tls.cert_manager.issuer != '' then {
+                'cert-manager.io/issuer': this.values.tls.cert_manager.issuer
+            } else {},
+        },
+        spec: {
+            tls: if this.values.tls.enabled then [
+                { 
+                    hosts: [           
+                        assert host.name != '' : 'ingress hosts dictionaries must contain a "name"';
+                        host.name for host in this.values.hosts
+                    ],
+                    secretName: tls_secret
+                },
+            ],
+            rules: [
+                {
+                    host: host.name,
+                    http: {
+                        paths: if !std.objectHas(host, 'paths') || std.length(host.paths) == 0 then [
+                            { 
+                                path: '/', backend: { serviceName: this.target_service.metadata.name, servicePort: 'http' } 
+                            },
+                        ] else [
+                            {
+                                path: path, backend: { serviceName: this.target_service.metadata.name, servicePort: 'http' },
+                            } for path in host.paths
                         ],
-                        secretName: tls_secret
-                    },
-                ],
-                rules: [
-                    {
-                        host: host.name,
-                        http: {
-                            paths: if !std.objectHas(host, 'paths') || std.length(host.paths) == 0 then [
-                                { 
-                                    path: '/', backend: { serviceName: this.target_service.metadata.name, servicePort: 'http' } 
-                                },
-                            ] else [
-                                {
-                                    path: path, backend: { serviceName: this.target_service.metadata.name, servicePort: 'http' },
-                                } for path in host.paths
-                            ],
-                        }, 
-                    } for host in this.values.hosts
-                ],
-            },
-        }
+                    }, 
+                } for host in this.values.hosts
+            ],
+        },
     },
 
     application(name):: {
