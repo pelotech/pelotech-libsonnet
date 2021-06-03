@@ -33,7 +33,7 @@ local kube = import 'kube.libsonnet';
         assert std.length(this.values.hosts) != 0 : 'at least one host dictionary must be provided for ingress in the form of { name: "hostname.example.com", paths: ["/"] }. The "paths" key is optional and defaults to that shown.',
         
         // Make sure that if TLS is enabled we have at least a cluster_issuer or an issuer.
-        assert  !this.values.tls.enabled || // If tls is disabled - skip following checks
+        assert  !tls_enabled || // If tls is disabled - skip following checks
                 std.objectHas(this.values.tls, 'cert_manager') &&  // make sure we have a cert_manager object
                 (
                     // if we have a cluster_issuer, make sure it is not empty
@@ -47,14 +47,17 @@ local kube = import 'kube.libsonnet';
         // Create a local reference to the name that will be used for the tls_secret, if enabled.
         local tls_secret = if std.objectHas(this.values.tls, 'secretName') && this.values.tls.secretName != '' then this.values.tls.secretName else '%s-tls' % name,
 
+        // Create a local reference to whether TLS is enabled
+        local tls_enabled = if std.objectHas(this.values.tls, 'enabled') && this.values.tls.enabled then true else false,
+
         // Take a local reference to the cluster_issuer if configured
-        local cluster_issuer = if this.values.tls.enabled 
+        local cluster_issuer = if tls_enabled
                                 && std.objectHas(this.values.tls, 'cert_manager') 
                                 && std.objectHas(this.values.tls.cert_manager, 'cluster_issuer') 
                                 then this.values.tls.cert_manager.cluster_issuer else '',
 
         // Take a local reference to the issuer if configured
-        local issuer = if this.values.tls.enabled 
+        local issuer = if tls_enabled
                                 && std.objectHas(this.values.tls, 'cert_manager') 
                                 && std.objectHas(this.values.tls.cert_manager, 'issuer') 
                                 then this.values.tls.cert_manager.issuer else '',
@@ -65,14 +68,14 @@ local kube = import 'kube.libsonnet';
             labels: this.values.labels,
             annotations: {
                 'kubernetes.io/ingress.class': this.values.ingress_class,  
-            } + if this.values.tls.enabled && cluster_issuer != '' then {
+            } + if tls_enabled && cluster_issuer != '' then {
                 'cert-manager.io/cluster-issuer': cluster_issuer
-            } else if this.values.tls.enabled && issuer != '' then {
+            } else if tls_enabled && issuer != '' then {
                 'cert-manager.io/issuer': issuer
             } else {},
         },
         spec: {
-            tls: if this.values.tls.enabled then [
+            tls: if tls_enabled then [
                 { 
                     hosts: [           
                         assert std.objectHas(host, 'name') && host.name != '' : 'ingress hosts dictionaries must contain a "name" field';
