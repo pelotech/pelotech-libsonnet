@@ -1,4 +1,4 @@
-local kube = import 'kube.libsonnet';
+local kube = import 'https://github.com/bitnami-labs/kube-libsonnet/raw/v1.14.6/kube.libsonnet';
 
 {
 
